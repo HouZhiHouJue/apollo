@@ -1,8 +1,8 @@
 package com.ctrip.framework.apollo.portal;
 
+import com.ctrip.framework.apollo.common.exception.ServiceException;
 import com.ctrip.framework.apollo.core.dto.ServiceDTO;
 import com.ctrip.framework.apollo.core.enums.Env;
-import com.ctrip.framework.apollo.common.exception.ServiceException;
 import com.ctrip.framework.apollo.portal.components.AdminServiceAddressLocator;
 import com.ctrip.framework.apollo.portal.components.RetryableRestTemplate;
 
@@ -52,8 +52,9 @@ public class RetryableRestTemplateTest extends AbstractUnitTest {
   @Before
   public void init() {
     socketTimeoutException.initCause(new SocketTimeoutException());
+
     httpHostConnectException
-        .initCause(new HttpHostConnectException(new HttpHost(serviceOne, 80), new ConnectException()));
+        .initCause(new HttpHostConnectException(new ConnectTimeoutException(), new HttpHost(serviceOne, 80)));
     connectTimeoutException.initCause(new ConnectTimeoutException());
   }
 

@@ -1,24 +1,26 @@
 package com.ctrip.framework.apollo.biz.service;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.CollectionUtils;
-
 import com.ctrip.framework.apollo.biz.entity.Audit;
 import com.ctrip.framework.apollo.biz.entity.Cluster;
 import com.ctrip.framework.apollo.biz.entity.Namespace;
 import com.ctrip.framework.apollo.biz.repository.NamespaceRepository;
 import com.ctrip.framework.apollo.common.constants.NamespaceBranchStatus;
 import com.ctrip.framework.apollo.common.entity.AppNamespace;
-import com.ctrip.framework.apollo.common.utils.BeanUtils;
+import com.ctrip.framework.apollo.common.exception.BadRequestException;
 import com.ctrip.framework.apollo.common.exception.ServiceException;
+import com.ctrip.framework.apollo.common.utils.BeanUtils;
+import com.ctrip.framework.apollo.core.ConfigConsts;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class NamespaceService {
@@ -55,6 +57,23 @@ public class NamespaceService {
   public Namespace findOne(String appId, String clusterName, String namespaceName) {
     return namespaceRepository.findByAppIdAndClusterNameAndNamespaceName(appId, clusterName,
                                                                          namespaceName);
+  }
+
+  public Namespace findPublicNamespace(String clusterName, String namespaceName) {
+    AppNamespace appNamespace = appNamespaceService.findPublicNamespaceByName(namespaceName);
+    if (appNamespace == null) {
+      throw new BadRequestException("namespace not exist");
+    }
+
+    String appId = appNamespace.getAppId();
+
+    Namespace namespace = findOne(appId, clusterName, namespaceName);
+
+    if (namespace == null) {
+      namespace = findOne(appId, ConfigConsts.CLUSTER_NAME_DEFAULT, namespaceName);
+    }
+
+    return namespace;
   }
 
   public List<Namespace> findNamespaces(String appId, String clusterName) {
@@ -100,6 +119,10 @@ public class NamespaceService {
 
   }
 
+  public Namespace findParentNamespace(String appId, String clusterName, String namespaceName){
+    return findParentNamespace(new Namespace(appId, clusterName, namespaceName));
+  }
+
   public Namespace findParentNamespace(Namespace namespace) {
     String appId = namespace.getAppId();
     String namespaceName = namespace.getNamespaceName();
@@ -111,6 +134,10 @@ public class NamespaceService {
     }
 
     return null;
+  }
+
+  public boolean isChildNamespace(String appId, String clusterName, String namespaceName){
+    return isChildNamespace(new Namespace(appId, clusterName, namespaceName));
   }
 
   public boolean isChildNamespace(Namespace namespace) {

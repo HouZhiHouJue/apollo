@@ -1,7 +1,9 @@
 package com.ctrip.framework.apollo.portal.components;
 
 
+import com.ctrip.framework.apollo.core.MetaDomainConsts;
 import com.ctrip.framework.apollo.core.enums.Env;
+import com.ctrip.framework.apollo.core.utils.ApolloThreadFactory;
 import com.ctrip.framework.apollo.portal.api.AdminServiceAPI;
 import com.ctrip.framework.apollo.portal.service.ServerConfigService;
 
@@ -58,7 +60,9 @@ public class PortalSettings {
       envStatusMark.put(env, true);
     }
 
-    ScheduledExecutorService healthCheckService = Executors.newScheduledThreadPool(1);
+    ScheduledExecutorService
+        healthCheckService =
+        Executors.newScheduledThreadPool(1, ApolloThreadFactory.create("EnvHealthChecker", false));
 
     healthCheckService
         .scheduleWithFixedDelay(new HealthCheckTask(applicationContext), 1000, HEALTH_CHECK_INTERVAL,
@@ -107,13 +111,15 @@ public class PortalSettings {
               logger.info("Env revived because env health check success. env: {}", env);
             }
           } else {
-            logger.warn("Env health check failed, maybe because of admin server down. env: {}", env);
+            logger.error("Env health check failed, maybe because of admin server down. env: {}, meta server address: {}", env,
+                        MetaDomainConsts.getDomain(env));
             handleEnvDown(env);
           }
 
         } catch (Exception e) {
-          logger.warn("Env health check failed, maybe because of meta server down "
-                      + "or config error meta server address. env: {}", env);
+          logger.error("Env health check failed, maybe because of meta server down "
+                       + "or configure wrong meta server address. env: {}, meta server address: {}", env,
+                       MetaDomainConsts.getDomain(env), e);
           handleEnvDown(env);
         }
       }
@@ -130,15 +136,18 @@ public class PortalSettings {
       healthCheckFailedCounter.put(env, ++failedTimes);
 
       if (!envStatusMark.get(env)) {
-        logger.error("Env is down. env: {}, failed times: {}", env, failedTimes);
+        logger.error("Env is down. env: {}, failed times: {}, meta server address: {}", env, failedTimes,
+                     MetaDomainConsts.getDomain(env));
       } else {
         if (failedTimes >= ENV_DOWN_THRESHOLD) {
           envStatusMark.put(env, false);
           logger.error("Env is down because health check failed for {} times, "
-                       + "which equals to down threshold. env: {}", ENV_DOWN_THRESHOLD, env);
+                       + "which equals to down threshold. env: {}, meta server address: {}", ENV_DOWN_THRESHOLD, env,
+                       MetaDomainConsts.getDomain(env));
         } else {
-          logger.warn("Env health check failed for {} times which less than down threshold. down threshold:{}, env: {}",
-                      failedTimes, ENV_DOWN_THRESHOLD, env);
+          logger.error(
+              "Env health check failed for {} times which less than down threshold. down threshold:{}, env: {}, meta server address: {}",
+              failedTimes, ENV_DOWN_THRESHOLD, env, MetaDomainConsts.getDomain(env));
         }
       }
 
